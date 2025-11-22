@@ -3,9 +3,29 @@ spring:
     mongodb:
       uri: mongodb://localhost:27017/addressdb
       #uri: ${SPRING_DATA_MONGODB_URI}
+  
+  # Redis Configuration
+  redis:
+    host: localhost
+    port: 6379
+    # Uncomment and configure these if your Redis requires authentication
+    # password: your-redis-password
+    # ssl: false
+    # timeout: 10s
+    
+    # Connection pool configuration (optional)
+    jedis:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+        max-wait: -1ms
+
 server:
   port: 8081
+
 
 logging:
   level:
     org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+    org.springframework.data.redis: DEBUG  # Add Redis debug logging

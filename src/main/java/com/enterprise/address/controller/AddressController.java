@@ -1,5 +1,7 @@
 package com.enterprise.address.controller;
 
+import com.enterprise.address.service.CacheService;
+import com.enterprise.address.exception.ResourceNotFoundException;
 import com.enterprise.address.model.Address;
 import com.enterprise.address.service.AddressService;
 import org.springframework.http.HttpStatus;
@@ -9,50 +11,120 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
 
+/**
+ * REST controller for managing addresses.
+ * Provides endpoints for CRUD operations on addresses.
+ */
 @RestController
 @RequestMapping("/api/addresses")
 public class AddressController {
 
+    // Service layer for address operations
     private final AddressService service;
+    
+    // Service for managing caches
+    private final CacheService cacheService;
 
-    public AddressController(AddressService service) {
+    public AddressController(AddressService service, CacheService cacheService) {
         this.service = service;
+        this.cacheService = cacheService;
     }
 
+    /**
+     * Creates a new address.
+     *
+     * @param address The address to create
+     * @return The created address with HTTP 201 status
+     */
     @PostMapping
-    public ResponseEntity<Address> createAddress(@Valid @RequestBody Address address) {
-        Address saved = service.createAddress(address);
-        return new ResponseEntity<>(saved, HttpStatus.CREATED);
+    @ResponseStatus(HttpStatus.CREATED)
+    public Address createAddress(@Valid @RequestBody Address address) {
+        return service.createAddress(address);
     }
 
+    /**
+     * Updates an existing address.
+     *
+     * @param id The ID of the address to update
+     * @param address The updated address data
+     * @return The updated address
+     */
     @PutMapping("/{id}")
-    public ResponseEntity<Address> updateAddress(@PathVariable String id, @Valid @RequestBody Address address) {
-        Address updated = service.updateAddress(id, address);
-        return ResponseEntity.ok(updated);
+    public Address updateAddress(@PathVariable String id, @Valid @RequestBody Address address) {
+        return service.updateAddress(id, address);
     }
 
+    /**
+     * Retrieves all addresses.
+     *
+     * @return List of all addresses
+     */
     @GetMapping
-    public ResponseEntity<List<Address>> getAll() {
-        List<Address> addresses = service.getAddressesByUser(null); // fetch all users if userId is null
-        return ResponseEntity.ok(addresses);
+    public List<Address> getAll() {
+        return service.getAllAddresses();
     }
 
+    /**
+     * Retrieves an address by ID.
+     *
+     * @param id The ID of the address to retrieve
+     * @return The requested address
+     * @throws ResourceNotFoundException if the address is not found
+     */
     @GetMapping("/{id}")
-    public ResponseEntity<Address> getById(@PathVariable String id) {
-        return service.getById(id)
-                .map(ResponseEntity::ok)
-                .orElseThrow(() -> new com.enterprise.address.exception.ResourceNotFoundException("Address not found with id: " + id));
+    public Address getById(@PathVariable String id) {
+        return service.getAddressById(id);
     }
 
+    /**
+     * Retrieves all addresses for a specific user.
+     *
+     * @param userId The ID of the user
+     * @return List of addresses for the specified user
+     */
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<Address>> getByUser(@PathVariable String userId) {
-        List<Address> addresses = service.getAddressesByUser(userId);
-        return ResponseEntity.ok(addresses);
+    public List<Address> getByUser(@PathVariable String userId) {
+        return service.getAddressesByUserId(userId);
     }
 
+    /**
+     * Deletes an address by ID.
+     *
+     * @param id The ID of the address to delete
+     */
     @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public ResponseEntity<Void> delete(@PathVariable String id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Clears all caches in the application.
+     * 
+     * <p>This endpoint clears all caches, including:</p>
+     * <ul>
+     *   <li>Individual address caches (by ID)</li>
+     *   <li>Complete list of all addresses</li>
+     *   <li>User-specific address lists</li>
+     *   <li>Redis data store</li>
+     * </ul>
+     * 
+     * <p>This is useful for:</p>
+     * <ul>
+     *   <li>Development and debugging</li>
+     *   <li>Forcing fresh data to be loaded from the database</li>
+     *   <li>Recovering from potential cache inconsistencies</li>
+     * </ul>
+     *
+     * @return A response indicating the result of the operation
+     * @apiNote Requires ADMIN role (if security is enabled)
+     * @see CacheService#clearAllCaches()
+     */
+    @PostMapping("/clear-cache")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<String> clearCache() {
+        cacheService.clearAllCaches();
+        return ResponseEntity.ok("✅ All caches have been cleared successfully");
     }
 }
